@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/concourse/concourse/tracing"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -491,16 +492,19 @@ func (worker *gardenWorker) createVolumes(
 		return nil, err
 	}
 
-	streamedMounts, err := worker.cloneRemoteVolumes(
-		ctx,
-		logger,
-		spec.TeamID,
-		isPrivileged,
-		creatingContainer,
-		nonlocalInputs,
-	)
-	if err != nil {
-		return nil, err
+	streamedMounts := []VolumeMount{}
+	if len(nonlocalInputs) > 0 {
+		streamedMounts, err = worker.cloneRemoteVolumes(
+			ctx,
+			logger,
+			spec.TeamID,
+			isPrivileged,
+			creatingContainer,
+			nonlocalInputs,
+		)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	ioVolumeMounts = append(ioVolumeMounts, cowMounts...)
@@ -582,6 +586,10 @@ func (worker *gardenWorker) cloneRemoteVolumes(
 	container db.CreatingContainer,
 	nonLocals []mountableRemoteInput,
 ) ([]VolumeMount, error) {
+
+	ctx, span := tracing.StartSpan(ctx, "worker.cloneRemoteVolumes", tracing.Attrs{"container_id": container.Handle()})
+	defer span.End()
+
 	mounts := make([]VolumeMount, len(nonLocals))
 	g, groupCtx := errgroup.WithContext(ctx)
 
