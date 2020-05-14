@@ -105,6 +105,8 @@ func (r *runner) run(ctx context.Context, force bool) error {
 		return nil
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	if err = r.task.Run(ctx); err != nil {
 		r.logger.Error("failed-to-run-task", err, lager.Data{"task-name": r.componentName})
 		return err

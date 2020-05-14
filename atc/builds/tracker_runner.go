@@ -25,7 +25,7 @@ type BuildTracker interface {
 type Notifications interface {
 	Listen(channel string) (chan bool, error)
 	Unlisten(channel string, notifier chan bool) error
-	Notify(channel string) error
+	Notify(ctx context.Context, channel string) error
 }
 
 func NewRunner(
@@ -88,7 +88,7 @@ func (r *runner) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 			r.logger.Info("releasing-tracker")
 			r.tracker.Release()
 			r.logger.Info("released-tracker")
-			return r.notifications.Notify(r.componentName)
+			return r.notifications.Notify(ctx, r.componentName)
 		}
 	}
 }

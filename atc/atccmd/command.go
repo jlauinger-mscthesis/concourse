@@ -1,6 +1,7 @@
 package atccmd
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"database/sql"
@@ -831,7 +832,7 @@ func (cmd *RunCommand) constructBackendMembers(
 	}
 
 	eventStore := constructEventStore(dbConn)
-	if err := eventStore.Setup(); err != nil {
+	if err := eventStore.Setup(context.TODO()); err != nil {
 		return nil, fmt.Errorf("failed to setup the event store: %w", err)
 	}
 
