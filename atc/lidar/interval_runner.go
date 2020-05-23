@@ -21,8 +21,8 @@ type Runner interface {
 //go:generate counterfeiter . Notifications
 
 type Notifications interface {
-	Listen(string) (chan bool, error)
-	Unlisten(string, chan bool) error
+	Listen(string, db.NotificationQueueMode) (chan db.Notification, error)
+	Unlisten(string, chan db.Notification) error
 }
 
 func NewIntervalRunner(
@@ -64,7 +64,7 @@ func (r *intervalRunner) Run(signals <-chan os.Signal, ready chan<- struct{}) er
 
 	close(ready)
 
-	notifier, err := r.notifications.Listen(r.componentName)
+	notifier, err := r.notifications.Listen(r.componentName, db.DontQueueNotifications)
 	if err != nil {
 		return err
 	}

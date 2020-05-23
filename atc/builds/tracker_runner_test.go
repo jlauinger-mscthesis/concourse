@@ -7,6 +7,7 @@ import (
 
 	"code.cloudfoundry.org/clock/fakeclock"
 	"code.cloudfoundry.org/lager/lagertest"
+	"github.com/concourse/concourse/atc/db"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
@@ -33,7 +34,7 @@ var _ = Describe("TrackerRunner", func() {
 		fakeClock            *fakeclock.FakeClock
 		fakeLock             *lockfakes.FakeLock
 
-		notifier   chan bool
+		notifier   chan db.Notification
 		trackTimes chan time.Time
 		interval   = time.Minute
 	)
@@ -41,7 +42,7 @@ var _ = Describe("TrackerRunner", func() {
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
 
-		notifier = make(chan bool, 1)
+		notifier = make(chan db.Notification, 1)
 		fakeTracker = new(buildsfakes.FakeBuildTracker)
 		fakeNotifications = new(buildsfakes.FakeNotifications)
 		fakeNotifications.ListenReturns(notifier, nil)
@@ -222,7 +223,7 @@ var _ = Describe("TrackerRunner", func() {
 
 	Context("when it receives a notification", func() {
 		BeforeEach(func() {
-			notifier <- true
+			notifier <- db.Notification{Healthy: true}
 		})
 
 		It("calls to get a lock for cache invalidation", func() {
