@@ -65,3 +65,7 @@ Currently the only API action that can be limited in this way is `ListAllJobs` -
 #### <sub><sup><a name="5620" href="#5620">:link:</a></sup></sub> fix
 
 * @evanchaoli enhanced task step `vars` to support interpolation. #5620
+
+#### <sub><sup><a name="5192" href="#5192">:link:</a></sup></sub> fix
+
+* @evanchaoli changed the behaviour of the web to retry individual build steps that fail when a worker disappears.
