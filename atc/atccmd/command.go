@@ -531,7 +531,7 @@ func (cmd *RunCommand) Runner(positionalArguments []string) (ifrit.Runner, error
 	cmd.varSourcePool = creds.NewVarSourcePool(5*time.Minute, clock.NewClock())
 
 	ctx := context.Background()
-	store, err := cmd.eventStore(ctx, logger, backendConn /* backendConn is arbitrary */)
+	store, err := cmd.eventStore(ctx, logger, backendConn /* backendConn is arbitrary */, lockFactory)
 	if err != nil {
 		return nil, err
 	}
@@ -1124,7 +1124,7 @@ func (cmd *RunCommand) constructGCMember(
 	return members, nil
 }
 
-func (cmd *RunCommand) eventStore(ctx context.Context, logger lager.Logger, dbConn db.Conn) (events.Store, error) {
+func (cmd *RunCommand) eventStore(ctx context.Context, logger lager.Logger, dbConn db.Conn, lockFactory lock.LockFactory) (events.Store, error) {
 	var chosenStore events.Store
 	for name, store := range cmd.EventStores {
 		if !store.IsConfigured() {
@@ -1143,7 +1143,7 @@ func (cmd *RunCommand) eventStore(ctx context.Context, logger lager.Logger, dbCo
 
 	if chosenStore == nil {
 		logger.Info("defaulting to postgres event store")
-		chosenStore = &postgres.Store{Conn: dbConn}
+		chosenStore = &postgres.Store{Conn: dbConn, LockFactory: lockFactory}
 	}
 
 	ctx = lagerctx.NewContext(ctx, logger)
