@@ -1097,6 +1097,8 @@ func (b *build) AdoptInputsAndPipes() ([]BuildInput, bool, error) {
 	}
 
 	buildInputs := []BuildInput{}
+	var resolveError string
+
 	for inputName, input := range inputs {
 		var versionBlob string
 
@@ -1110,6 +1112,16 @@ func (b *build) AdoptInputsAndPipes() ([]BuildInput, bool, error) {
 			RunWith(tx).
 			QueryRow().
 			Scan(&versionBlob)
+		if err == sql.ErrNoRows {
+			buildInputs = append(buildInputs, BuildInput{
+				Name:            inputName,
+				ResourceID:      input.Input.ResourceID,
+				FirstOccurrence: input.Input.FirstOccurrence,
+				ResolveError:    fmt.Sprintf("chosen version of input %s not available", inputName),
+			})
+
+			return buildInputs, false, nil
+		}
 		if err != nil {
 			return nil, false, err
 		}
@@ -1125,6 +1137,7 @@ func (b *build) AdoptInputsAndPipes() ([]BuildInput, bool, error) {
 			ResourceID:      input.Input.ResourceID,
 			Version:         version,
 			FirstOccurrence: input.Input.FirstOccurrence,
+			ResolveError:    resolveError,
 		})
 	}
 
