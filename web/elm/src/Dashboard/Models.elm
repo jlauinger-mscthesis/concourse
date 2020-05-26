@@ -10,9 +10,9 @@ module Dashboard.Models exposing
 import Concourse
 import Dashboard.Group.Models
 import Dict exposing (Dict)
-import Message.Effects exposing (Effect(..))
 import FetchResult exposing (FetchResult)
 import Login.Login as Login
+import Message.Effects exposing (Effect(..))
 import Time
 
 
@@ -70,7 +70,7 @@ type alias FooterModel r =
         | hideFooter : Bool
         , hideFooterCounter : Int
         , showHelp : Bool
-        , pipelines : Maybe (List Dashboard.Group.Models.Pipeline)
+        , pipelines : FetchResult (List Dashboard.Group.Models.Pipeline)
         , dropdown : Dropdown
         , highDensity : Bool
     }
