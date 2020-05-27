@@ -9,6 +9,8 @@ import (
 	"code.cloudfoundry.org/lager"
 	"github.com/concourse/concourse/atc/db"
 	"github.com/concourse/concourse/atc/metric"
+	"github.com/concourse/concourse/tracing"
+	"go.opentelemetry.io/otel/api/key"
 )
 
 //go:generate counterfeiter . BuildScheduler
@@ -47,6 +49,8 @@ func (s *schedulerRunner) Run(ctx context.Context) error {
 
 	sLog.Debug("start")
 	defer sLog.Debug("done")
+	spanCtx, span := tracing.StartSpan(ctx, "scheduler.Run", nil)
+	defer span.End()
 
 	jobs, err := s.jobFactory.JobsToSchedule()
 	if err != nil {
@@ -81,7 +85,7 @@ func (s *schedulerRunner) Run(ctx context.Context) error {
 
 			defer schedulingLock.Release()
 
-			err = s.scheduleJob(ctx, sLog, job)
+			err = s.scheduleJob(spanCtx, sLog, job)
 			if err != nil {
 				jLog.Error("failed-to-schedule-job", err)
 			}
@@ -97,6 +101,12 @@ func (s *schedulerRunner) scheduleJob(ctx context.Context, logger lager.Logger, 
 	defer metric.JobsScheduled.Inc()
 
 	logger = logger.Session("schedule-job", lager.Data{"job": job.Name()})
+	spanCtx, span := tracing.StartSpan(ctx, "schedule-job", tracing.Attrs{
+		"team":     job.TeamName(),
+		"pipeline": job.PipelineName(),
+		"job":      job.Name(),
+	})
+	defer span.End()
 
 	logger.Debug("schedule")
 
@@ -118,7 +128,7 @@ func (s *schedulerRunner) scheduleJob(ctx context.Context, logger lager.Logger, 
 	jStart := time.Now()
 
 	needsRetry, err := s.scheduler.Schedule(
-		ctx,
+		spanCtx,
 		logger,
 		job,
 	)
@@ -126,6 +136,7 @@ func (s *schedulerRunner) scheduleJob(ctx context.Context, logger lager.Logger, 
 		return fmt.Errorf("schedule job: %w", err)
 	}
 
+	span.SetAttributes(key.New("needs-retry").Bool(needsRetry))
 	if !needsRetry {
 		err = job.UpdateLastScheduled(requestedTime)
 		if err != nil {
