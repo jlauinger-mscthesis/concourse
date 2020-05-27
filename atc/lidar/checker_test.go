@@ -40,6 +40,7 @@ var _ = Describe("Checker", func() {
 			logger,
 			fakeCheckFactory,
 			fakeEngine,
+			10,
 		)
 	})
 
