@@ -75,10 +75,12 @@ func (c *Container) Run(
 		return nil, fmt.Errorf("container spec: %w", err)
 	}
 
-	procSpec := containerSpec.Process
-	setupContainerdProcSpec(spec, procSpec)
+	procSpec, err := c.setupContainerdProcSpec(spec, *containerSpec)
+	if err != nil {
+		return nil, err
+	}
 
-	err = c.rootfsManager.SetupCwd(containerSpec, procSpec.Cwd)
+	err = c.rootfsManager.SetupCwd(containerSpec.Root.Path, procSpec.Cwd)
 	if err != nil {
 		return nil, fmt.Errorf("setup cwd: %w", err)
 	}
@@ -91,7 +93,7 @@ func (c *Container) Run(
 	id := procID(spec)
 	cioOpts := containerdCIO(processIO, spec.TTY != nil)
 
-	proc, err := task.Exec(ctx, id, procSpec, cio.NewCreator(cioOpts...))
+	proc, err := task.Exec(ctx, id, &procSpec, cio.NewCreator(cioOpts...))
 	if err != nil {
 		return nil, fmt.Errorf("task exec: %w", err)
 	}
@@ -325,7 +327,9 @@ func procID(gdnProcSpec garden.ProcessSpec) string {
 	return id
 }
 
-func setupContainerdProcSpec(gdnProcSpec garden.ProcessSpec, procSpec *specs.Process) {
+func (c *Container) setupContainerdProcSpec(gdnProcSpec garden.ProcessSpec, containerSpec specs.Spec) (specs.Process, error) {
+	procSpec := containerSpec.Process
+
 	procSpec.Args = append([]string{gdnProcSpec.Path}, gdnProcSpec.Args...)
 	procSpec.Env = append(procSpec.Env, gdnProcSpec.Env...)
 
@@ -346,6 +350,20 @@ func setupContainerdProcSpec(gdnProcSpec garden.ProcessSpec, procSpec *specs.Pro
 			}
 		}
 	}
+
+
+	if gdnProcSpec.User != "" {
+		var ok bool
+		var err error
+		procSpec.User, ok, err = c.rootfsManager.LookupUser(containerSpec.Root.Path, gdnProcSpec.User)
+		if err != nil {
+			// TODO
+		}
+		if !ok {
+			// TODO
+		}
+	}
+	return *procSpec, nil
 }
 
 func containerdCIO(gdnProcIO garden.ProcessIO, tty bool) []cio.Opt {
